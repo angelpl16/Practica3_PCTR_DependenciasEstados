@@ -15,7 +15,8 @@ public class Parque implements IParque {
 	private boolean entrada = false;
 	private boolean salida = false;
 
-	private boolean bloqueoEntrada = false;
+	private boolean bloqueoOperacion = false;
+	
 
 	public Parque() {
 		contadorPersonasTotales = 0;
@@ -23,7 +24,7 @@ public class Parque implements IParque {
 	}
 
 	@Override
-	public void entrarAlParque(String puerta) { // TODO
+	public synchronized void entrarAlParque(String puerta) { // TODO
 
 		// Si no hay entradas por esa puerta, inicializamos
 		if (contadoresPersonasPuertaEntrar.get(puerta) == null) {
@@ -38,7 +39,7 @@ public class Parque implements IParque {
 
 			// Se bloquea la entrada para que no se modifique la misma información en
 			// diferentes hilos
-			bloqueoEntrada = true;
+			bloqueoOperacion = true;
 			// Aumentamos el contador total y el individual
 			contadorPersonasTotales++;
 			contadoresPersonasPuertaEntrar.put(puerta, contadoresPersonasPuertaEntrar.get(puerta) + 1);
@@ -48,7 +49,7 @@ public class Parque implements IParque {
 
 			checkInvariante();
 
-			bloqueoEntrada = false;
+			bloqueoOperacion = false;
 			notifyAll();
 		}
 
@@ -58,8 +59,26 @@ public class Parque implements IParque {
 	// TODO Método salirDelParque
 	//
 
-	public void salirDelParque(String puerta) {
-
+	//La operación será igual que para sumar pero restando.
+	public synchronized void salirDelParque(String puerta) {
+		// Si no hay salidas por esa puerta, inicializamos
+		if (contadoresPersonasPuertaEntrar.get(puerta) == null) {
+			contadoresPersonasPuertaEntrar.put(puerta, 0);
+			contadoresPersonasPuertaEntrar.put(puerta, contadoresPersonasPuertaEntrar.get(puerta) - 1);
+		}
+		
+		comprobarAntesDeSalir();
+		
+		if (salida = true) {
+			bloqueoOperacion = true;
+			contadorPersonasTotales--;
+			imprimirInfo(puerta, "Salida");
+			checkInvariante();
+			bloqueoOperacion = false;
+			notifyAll();
+		}
+				
+				
 	}
 
 	private void imprimirInfo(String puerta, String movimiento) {
@@ -95,11 +114,11 @@ public class Parque implements IParque {
 	}
 
 	protected void comprobarAntesDeEntrar() {
-		if (contadorPersonasTotales < maxPersonas && !bloqueoEntrada) {
+		if (contadorPersonasTotales < maxPersonas && !bloqueoOperacion) {
 			entrada = true;
 		}
 
-		while (contadorPersonasTotales == maxPersonas || bloqueoEntrada) {
+		while (contadorPersonasTotales == maxPersonas || bloqueoOperacion) {
 			try {
 				wait();
 			} catch (InterruptedException e) {
@@ -109,9 +128,17 @@ public class Parque implements IParque {
 	}
 
 	protected void comprobarAntesDeSalir() {
-		//
-		// TODO
-		//
+		if (contadorPersonasTotales > 0 && !bloqueoOperacion) {
+			salida = true;
+		}
+		
+		while (contadorPersonasTotales == 0 || bloqueoOperacion) {
+			try {
+				wait();
+			} catch (InterruptedException e) {
+				System.out.println(e.toString());
+			}
+		}
 	}
 
 }
